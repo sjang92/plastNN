@@ -5,4 +5,3 @@ if [ ! -d "venv" ]; then
 fi
 source venv/bin/activate
 pip3 install -r requirements.txt
-python3 ./src/trainer.py

@@ -4,12 +4,11 @@ from abc import abstractmethod
 
 class BaseNeuralNetwork(object):
 
-    def __init__(self, session, graph, config):
+    def __init__(self, session, graph):
 
         # Tensorflow related instance variables for traversal, logging, etc
         self.session = session
         self.graph = graph
-        self.config = config  # config must support namedTuple interface
         self.train_metrics = OrderedDict()
 
         # Explicitly define required fields for visibility
@@ -18,8 +17,6 @@ class BaseNeuralNetwork(object):
 
         # Define the neural network model
         self._define_model()
-        #self._define_metrics()
-        #self._add_summaries()
 
         self.saver = tf.train.Saver(max_to_keep=None)
 
@@ -101,15 +98,3 @@ class BaseNeuralNetwork(object):
         self.train_metrics['step'] = self.step
         self.train_metrics['loss'] = self.loss
         self.train_metrics['lr'] = self.lr
-
-    def _add_summaries(self):
-        assert self.train_metrics is not None, "self.train_metrics must be defined first."
-        assert len(self.train_metrics) != 0, "there must be at least one metrics to report on"
-
-        for key in self.train_metrics.keys():
-            tf.summary.scalar(key, self.train_metrics[key])
-
-        self.summary_op = tf.summary.merge_all()
-        self.summary_writer = tf.summary.FileWriter(self.config.local_log_dir, self.graph)
-
-

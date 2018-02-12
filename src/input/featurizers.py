@@ -2,7 +2,7 @@
 from.constants import *
 
 """
-Helper methods
+Helper method
 """
 def _load_train_data_as_dict(file_path, column_names, separator=" ", id_column_name="id"):
     """

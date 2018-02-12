@@ -4,15 +4,16 @@ from .base_neural_network import BaseNeuralNetwork
 
 class FullyConnected(BaseNeuralNetwork):
 
-    def __init__(self, session, graph, config, dim, lr):
+    def __init__(self, session, graph, layers, dim, lr):
+        self.layers = layers
         self.dim = dim
         self.lr = lr
-        super(FullyConnected, self).__init__(session, graph, config)
+        super(FullyConnected, self).__init__(session, graph)
 
     def _define_inputs(self):
         # input dim is [1, dim] since we don't batch process
         self.input = tf.placeholder(dtype=tf.float32, shape=[1, self.dim])
-        self.label = tf.placeholder(dtype=tf.int32, shape=[1])  # +1 or 0
+        self.label = tf.placeholder(dtype=tf.int32, shape=[1])
 
     def _define_graph(self):
         """
@@ -23,19 +24,14 @@ class FullyConnected(BaseNeuralNetwork):
             self.regularizer = tf.contrib.layers.l2_regularizer(scale=0.05)
             # Note that all layers use xavier init by default
 
-            # First layer projects onto 64.
-            self.layer1 = tf.layers.dense(self.input, 64, activation=tf.nn.relu, kernel_regularizer=self.regularizer)
-
-            # Second layer projects onto 128.
-            self.layer2 = tf.layers.dense(self.layer1, 64, activation=tf.nn.relu, kernel_regularizer=self.regularizer)
-
-            # Third layer projects onto 32
-            self.layer3 = tf.layers.dense(self.layer2, 16, activation=tf.nn.relu, kernel_regularizer=self.regularizer)
-
-            #self.layer4 = tf.layers.dense(self.layer3, 16, activation=tf.nn.relu, kernel_regularizer=self.regularizer)
+            prev_layer = self.input
+            for num_neurons in self.layers:
+                curr_layer = tf.layers.dense(prev_layer, num_neurons,
+                                             activation=tf.nn.relu, kernel_regularizer=self.regularizer)
+                prev_layer = curr_layer
 
             # Last layer is a logits layer
-            self.logits = tf.nn.softmax(tf.layers.dense(self.layer3, 2))
+            self.logits = tf.nn.softmax(tf.layers.dense(prev_layer, 2))
 
             self.output = tf.argmax(self.logits, axis=1)
             self.one_hot = tf.one_hot(indices=self.label, depth=2)

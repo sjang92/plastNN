@@ -9,10 +9,15 @@ class BaseProteinDataset(object):
     Class to represent a single protein dataset.
     Use this class for cross-validation, feature selection, etc.
     You can provide manual methods to compute point_features as well
-    Dataset will automotacially be saved as a tf_record file for consumption efficiency
     """
 
     def __init__(self, positive_path, negative_path, feature_paths):
+        """
+        For unlabeled dataset, feed either only one of the positive / negative paths.
+        :param positive_path: path to file holding positive proteins
+        :param negative_path: path to file holding negative proteins
+        :param feature_paths: pre-computed features to inject
+        """
         self.positive_proteins = {}
         self.negative_proteins = {}
         if positive_path:
@@ -33,16 +38,20 @@ class BaseProteinDataset(object):
     def __getitem__(self, item):
         """
         this method allows us to use any instance of this class and its child classes as
-        a list of datasets.
+        an enumerable of datasets.
 
         dataset = BaseProteinDataset(...)
         for protein in dataset:
             # protein is an instance of the Protein calss
         """
-        protein_name = list(self.proteins.keys())[item]  # for python3. I'm not sure order is preserved..
+        protein_name = list(self.proteins.keys())[item]
         return self.proteins.get(protein_name)
 
     def add_tp_start(self, tp_file):
+        """
+        Helper method for adding TP start index per protein.
+        :param tp_file: path to file holding the TP start index data
+        """
         with open(tp_file, 'r') as fp:
             for line in fp.readlines():
                 tup = line.rstrip('\n').split()
@@ -114,12 +123,14 @@ class BaseProteinDataset(object):
                 protein[feature_name] = feature
 
     def clip_sequence_to_fixed_length(self, start, end):
+        """
+        Helper method for clipping the rna sequence of all protines in this dataset
+        """
         for name in self.proteins.keys():
             protein = self.proteins[name]
             assert end > start and end-start <= protein.length
             for feature in protein.keys():
                 protein[feature] = protein[feature][start:end]
-
 
     def num_positive(self):
         return len(self.positive_proteins)
@@ -164,7 +175,8 @@ class FeedDictProteinDataset(BaseProteinDataset):
     Subclass of BaseProteinDataset that implements an interface for
     feed-dict based tensorflow usage.
 
-    Since the dataset is very small, we store everything in memory
+    Since the dataset is very small, we store everything in memory and
+    don't worry about I/O costs
     """
 
     def __init__(self, positive_path, negative_path, feature_paths, k=5):
@@ -172,7 +184,7 @@ class FeedDictProteinDataset(BaseProteinDataset):
         self.cursors = [[0, 0] for _ in range(k)]
         self.epochs = [0 for _ in range(k)]
 
-        # Synchronization
+        # Synchronization (Supports quick training of more complex models. Not used for plastNN)
         self.cursor_lock = threading.Lock()
 
         super(FeedDictProteinDataset, self).__init__(positive_path, negative_path, feature_paths)
@@ -311,7 +323,10 @@ class PointProteinDataset(FeedDictProteinDataset):
             self.folds.append((train_data, test_data))
             fold_num += 1
 
-    def generate_records_for_evaluation(self):
+    def generate_records_for_labeling(self):
+        """
+        Shape this dataset so that it can be consumed for labeling unlabeled data
+        """
         print("Generating records for evaluation...")
         self.folds = []  # simply follow cross validation scheme
 

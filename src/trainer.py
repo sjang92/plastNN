@@ -7,21 +7,25 @@ import input.featurizers as Featurizers
 import input.constants as DatasetConstants
 from models.fully_connected import FullyConnected
 from evaluation.performance_table import PerformanceTable
-from evaluation.evaluate import evaluate, VoteInfo
+from evaluation.evaluate import evaluate
+from evaluation.voting import VoteInfo
 
 
 """
-Define tensorflow flags
+Define tensorflow app flags
 """
 flags = tf.app.flags
-flags.DEFINE_string("train_pos_path", "./dataset/train_data/positive.txt", "path to positive proteins")
-flags.DEFINE_string("train_neg_path", "./dataset/train_data/negative.txt", "path to negative proteins")
-flags.DEFINE_string("train_pos_tp_path", "./dataset/train_data/pos_tp.txt", "path to tp start data for positive proteins")
-flags.DEFINE_string("train_neg_tp_path", "./dataset/train_data/neg_tp.txt", "path to tp start data for negative proteins")
-flags.DEFINE_string("train_rna_interval_path", "./dataset/train_data/rna.txt", "path to rna interval file")
-flags.DEFINE_string("unlabeled_data_path", "./dataset/unlabeled_data/data.txt", "path to unlabeled list of proteins")
-flags.DEFINE_string("unlabeled_tp_path", "./dataset/unlabeled_data/tp.txt", "path to tp start data for unlabeled proteins")
-flags.DEFINE_string("unlabeled_rna_interval_path", "./dataset/unlabeled_data/rna.txt", "path to rna interval for unlabeled proteins")
+flags.DEFINE_string("train_pos_path", "./data/train_data/positive.txt", "path to positive proteins")
+flags.DEFINE_string("train_neg_path", "./data/train_data/negative.txt", "path to negative proteins")
+flags.DEFINE_string("train_pos_tp_path", "./data/train_data/pos_tp.txt", "path to tp start data for positive proteins")
+flags.DEFINE_string("train_neg_tp_path", "./data/train_data/neg_tp.txt", "path to tp start data for negative proteins")
+flags.DEFINE_string("train_rna_interval_path", "./data/train_data/rna.txt", "path to rna interval file")
+flags.DEFINE_string("unlabeled_data_path", "./data/unlabeled_data/data.txt", "path to unlabeled list of proteins")
+flags.DEFINE_string("unlabeled_tp_path", "./data/unlabeled_data/tp.txt", "path to tp start data for unlabeled proteins")
+flags.DEFINE_string("unlabeled_rna_interval_path", "./data/unlabeled_data/rna.txt", "path to rna interval for unlabeled proteins")
+flags.DEFINE_string("perf_file_name", "perf.csv", "file name for the performance table csv file")
+flags.DEFINE_string("vote_file_name", "votes.csv", "file name for the voting results")
+
 flags.DEFINE_integer("k", 6, "number of folds for cross validation")
 flags.DEFINE_integer("num_features", 28, "number of features to extract")
 flags.DEFINE_integer("epochs", 100, "number of passes through the data")
@@ -29,22 +33,23 @@ flags.DEFINE_float("learning_rate", 0.0001, "learning rate")
 flags.DEFINE_integer("print_every", 500, "number of steps to print")
 flags.DEFINE_boolean("should_print_loss", False, "if we should print loss")
 flags.DEFINE_string("run_id", "run_id", "id of the run")
-flags.DEFINE_boolean("evaluate_every_epoch", True, "If we should evaluate after every epoch")
+flags.DEFINE_boolean("save_and_record", True, "If we should evaluate after every epoch")
 
 ARGS = flags.FLAGS
+RESULTS_DIR = "./results/{}".format(ARGS.run_id)
 
 """
 Define Trainer specific helper methods
 """
 
-def prepare_fc_model_dataset(positive_path, negative_path, tp_paths, rna_interval_path, k=1, unlabaled=False):
+def _load_fc_model_dataset(positive_path, negative_path, tp_paths, rna_interval_path, k=1, unlabaled=False):
     """
     Helper function for loading a PointProteinDataset with the given set of parameters
     :param positive_path: path to positive labeled datapoints
     :param negative_path: path to negative labeled datapoints. Can be None if positive_path is for unlabaled data
     :param tp_paths: a list containing paths for tp start data of the concenred proteins
     :param rna_interval_path: a list for rna_interval data
-    :param k: cross-validation variable K
+    :param k: cross-validation variable K. Default to 1 for unlabeled data
     :param unlabaled:  If True, then prepares the dataset object suitable for labeling
     :return: PointProteinDataset object
     """
@@ -56,21 +61,23 @@ def prepare_fc_model_dataset(positive_path, negative_path, tp_paths, rna_interva
     for path in tp_paths:
         dataset.add_tp_start(path)
 
+    # For fc models we only use frequency and transcriptome(rna_interval) data for featurization
     dataset.inject_point_feature("freq", Featurizers.get_amino_acid_freq_features)
     dataset.inject_point_feature("rna_interval",
-                                 Featurizers.get_column_features_from_file(rna_interval_path,
-                                                                           DatasetConstants.RNA_INTERVAL_FEATURE_COLUMNS))
+                                 Featurizers.get_column_features_from_file(
+                                     rna_interval_path,
+                                     DatasetConstants.RNA_INTERVAL_FEATURE_COLUMNS))
 
-    # Shape the dataset appropriately for its purpose
+    # Shape the dataset appropriately
     if unlabaled:
-        dataset.generate_records_for_evaluation()
+        dataset.generate_records_for_labeling()
     else:
         dataset.generate_records_for_cross_validation()
 
     return dataset
 
 
-def evaluate_and_record_results(model, dataset, fold, perf_table, best_models, epoch):
+def evaluate_and_record_results(model, dataset, perf_table, best_models, fold, epoch):
     """
     Helper Method for running evaluation over the dataset with the given model.
     Records the evaluation result in perf_table and saves if required
@@ -83,17 +90,17 @@ def evaluate_and_record_results(model, dataset, fold, perf_table, best_models, e
     :param epoch: epoch
     """
 
-    (tp, fp, fn, tn, acc, mcc, ppv, recall), (tp_tr, fp_tr, fn_tr, tn_tr, acc_tr, mcc_tr, ppv_tr, recall_tr) = evaluate(model, dataset, fold)
-    perf_table.insert_entry(fold, epoch, tp, fp, fn, tn, acc, mcc, ppv, recall, tp_tr, fp_tr, fn_tr, tn_tr, acc_tr, mcc_tr, ppv_tr, recall_tr)
+    evaluation_result = evaluate(model, dataset, fold)
+    perf_table.insert(evaluation_result, fold, epoch)
     perf_table.print_perf(fold, epoch)
 
-    if mcc >= perf_table.get_best_mcc(fold):
-        model_path = "{}/fold_{}/tf_save".format(ARGS.run_id, fold)
+    if evaluation_result.mcc >= perf_table.get_best_mcc(fold):
+        model_path = "{}/fold_{}/tf_save".format(RESULTS_DIR, fold)
         best_models[fold] = model_path
         model.save(model_path)
 
 
-def train_model(model, dataset, fold, perf_table, best_models, evaluate_every_epoch=True):
+def train_model(model, dataset, fold, perf_table, best_models, save_and_record=True):
     """
     Represents a single cross-validation train run for this (model, dataset) pair.
     If evaluate_every_epoch is True, then we run evaluation on the entire train / test
@@ -104,7 +111,7 @@ def train_model(model, dataset, fold, perf_table, best_models, evaluate_every_ep
     :param fold: current cross-validation fold
     :param perf_table: PerformanceTable object
     :param best_models: array containing save_path of best models for every cross validation folds
-    :param evaluate_every_epoch: True or False
+    :param save_and_record: True or False
     """
     step = 0
     avg_loss = 0.0
@@ -127,8 +134,8 @@ def train_model(model, dataset, fold, perf_table, best_models, evaluate_every_ep
 
         # evaluate after every epoch
         curr_epoch = dataset.get_epoch(fold)
-        if curr_epoch != prev_epoch and evaluate_every_epoch:
-            evaluate_and_record_results(model, dataset, fold, perf_table, best_models, prev_epoch)
+        if curr_epoch != prev_epoch and save_and_record:
+            evaluate_and_record_results(model, dataset, perf_table, best_models, fold, prev_epoch)
 
         prev_epoch = curr_epoch
 
@@ -177,29 +184,30 @@ if __name__ == "__main__":
     """
 
     # 1) Initialize Tensorflow & Helper Objects
-    if not os.path.exists(ARGS.run_id):
-        os.makedirs(ARGS.run_id)
+    if not os.path.exists(RESULTS_DIR):
+        os.makedirs(RESULTS_DIR)
+
     graph = tf.get_default_graph()
     session = tf.Session(graph=graph, config=tf.ConfigProto(allow_soft_placement=True))
     perf_table = PerformanceTable(ARGS.run_id, ARGS.k, ARGS.epochs)
     best_models = [None] * ARGS.k
 
     # 2) Initialize Model and Dataset (Training & Unlabeled)
-    model = FullyConnected(session, graph, None, ARGS.num_features, ARGS.learning_rate)
-    training_dataset = prepare_fc_model_dataset(ARGS.train_pos_path, ARGS.train_neg_path,
+    model = FullyConnected(session, graph, [64, 64, 16], ARGS.num_features, ARGS.learning_rate)
+    training_dataset = _load_fc_model_dataset(ARGS.train_pos_path, ARGS.train_neg_path,
                                        [ARGS.train_pos_tp_path, ARGS.train_neg_tp_path],
                                        ARGS.train_rna_interval_path, k=ARGS.k)
-    unlabeled_dataset = prepare_fc_model_dataset(ARGS.unlabeled_data_path, None,
+    unlabeled_dataset = _load_fc_model_dataset(ARGS.unlabeled_data_path, None,
                                             [ARGS.unlabeled_tp_path],
                                             ARGS.unlabeled_rna_interval_path, unlabaled=True)
 
     # 3) Perform Training using Cross Validation, and save the results if desired
     for fold in range(ARGS.k):
         model.init()
-        train_model(model, training_dataset, fold, perf_table, best_models, evaluate_every_epoch=ARGS.evaluate_every_epoch)
+        train_model(model, training_dataset, fold, perf_table, best_models, save_and_record=ARGS.save_and_record)
 
-    if ARGS.evaluate_every_epoch:
-        perf_table.save_as_csv("{}/perf.csv".format(ARGS.run_id))
+    if ARGS.save_and_record:
+        perf_table.save_as_csv("{}/{}".format(RESULTS_DIR, ARGS.perf_file_name))
 
     # 4) Label unlabeled_data by K-ways voting and save the results
     votes = {}
@@ -207,6 +215,6 @@ if __name__ == "__main__":
         model.load(model_path)
         votes = label_with_model(model, unlabeled_dataset, votes)
 
-    vote_file_path = "{}/votes.csv".format(ARGS.run_id)
+    vote_file_path = "{}/{}".format(RESULTS_DIR, ARGS.vote_file_name)
     VoteInfo.save_as_csv(votes, vote_file_path)
 
