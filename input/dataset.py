@@ -30,9 +30,6 @@ class BaseProteinDataset(object):
         for feature_path in feature_paths:
             self._inject_feature(self.proteins, feature_path)
 
-        print("Finished creating protein dataset from {} proteins and {} features"\
-            .format(len(self.proteins), len(feature_paths)))
-
     def __getitem__(self, item):
         """
         this method allows us to use any instance of this class and its child classes as
@@ -185,13 +182,11 @@ class FeedDictProteinDataset(BaseProteinDataset):
         Method for pre-generating training/testing cv datasets for feed-dict based tensorflow interface.
         we store everything in memory
         """
-        print("generating records for cross validation...")
         cv_sets = self._cross_validation_sets_naive(self.k)
         fold_num = 0
         self.folds = []
 
         for fold in cv_sets:
-            print("generating records for fold = {}".format(fold_num))
             train = fold[0]
             test = fold[1]
 
@@ -300,7 +295,6 @@ class PointProteinDataset(FeedDictProteinDataset):
         Method for pre-generating training/testing cv datasets for feed-dict based tensorflow interface.
         we store everything in memory
         """
-        print("generating records for cross validation...")
         cv_sets = self._cross_validation_sets_naive(self.k)
 
         self.folds = []

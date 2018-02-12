@@ -1,5 +1,7 @@
 from __future__ import print_function
 import tensorflow as tf
+import os
+
 import input.dataset as Dataset
 import input.featurizers as Featurizers
 import input.constants as DatasetConstants
@@ -21,7 +23,9 @@ flags.DEFINE_string("unlabeled_data_path", "./dataset/unlabeled_data/data.txt", 
 flags.DEFINE_string("unlabeled_tp_path", "./dataset/unlabeled_data/tp.txt", "path to tp start data for unlabeled proteins")
 flags.DEFINE_string("unlabeled_rna_interval_path", "./dataset/unlabeled_data/rna.txt", "path to rna interval for unlabeled proteins")
 flags.DEFINE_integer("k", 6, "number of folds for cross validation")
+flags.DEFINE_integer("num_features", 28, "number of features to extract")
 flags.DEFINE_integer("epochs", 100, "number of passes through the data")
+flags.DEFINE_float("learning_rate", 0.0001, "learning rate")
 flags.DEFINE_integer("print_every", 500, "number of steps to print")
 flags.DEFINE_boolean("should_print_loss", False, "if we should print loss")
 flags.DEFINE_string("run_id", "run_id", "id of the run")
@@ -173,13 +177,15 @@ if __name__ == "__main__":
     """
 
     # 1) Initialize Tensorflow & Helper Objects
+    if not os.path.exists(ARGS.run_id):
+        os.makedirs(ARGS.run_id)
     graph = tf.get_default_graph()
     session = tf.Session(graph=graph, config=tf.ConfigProto(allow_soft_placement=True))
     perf_table = PerformanceTable(ARGS.run_id, ARGS.k, ARGS.epochs)
     best_models = [None] * ARGS.k
 
     # 2) Initialize Model and Dataset (Training & Unlabeled)
-    model = FullyConnected(session, graph, None, 28, 0.0008)
+    model = FullyConnected(session, graph, None, ARGS.num_features, ARGS.learning_rate)
     training_dataset = prepare_fc_model_dataset(ARGS.train_pos_path, ARGS.train_neg_path,
                                        [ARGS.train_pos_tp_path, ARGS.train_neg_tp_path],
                                        ARGS.train_rna_interval_path, k=ARGS.k)
