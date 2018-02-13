@@ -32,22 +32,33 @@ check the tensorflow app flags defined in 'src/trainer.py' and re-run accordingl
 ## Background
 
 ## Data
-Explain data here (rna_sequence, tp start indices, and transcriptome data)
-The training data contains 205 positive-label (apicoplast) proteins and 451 negative-label (non-apicoplast) proteins.
 
-The unlabeled data contains
+The training data contains the following data types for 205 positive-label (apicoplast) proteins and 451 negative-label (non-apicoplast) proteins:
+1. Protein sequence (positive.txt and negative.txt)
+2. Position of the first nucleotide after the end of the signal peptide, predicted by signalP3.0 (1) (pos_tp.txt and neg_tp.txt)
+3. Transcript levels corresponding to each protein at 8 time points, from Bartfai et al. (2) (pos_rna.txt and neg_rna.txt)
+
+The unlabeled data contains similar files for 450 unlabeled proteins.
 Both data can be found in the [data](https://github.com/sjang92/plastNN/tree/master/data) directory.
 
 ## Featurization
 
-Explain how the raw data is featurized into vectors of length 28.
+For each protein, plastNN constructs a feature vector of length 28. The first 20 elements represent fequencies of the 20 canonical amino acids in a 50-amino acid region immediately after the predicted signal peptide, and the next 8 elements are transcript levels at 8 time points. These vectors are used as input to the neural network.
 
 ## Model
 
-PlastNN is a simple 3 layer fully-connected neural network, with each layer having 64, 64 and 16 output neurons respectively.
+PlastNN is a simple fully-connected neural network with 3 hidden layers, with each layer having 64, 64 and 16 output neurons respectively.
 
 ## Training and Evaluation
 
-The model was trained using
+Neural networks were trained using the RMSProp optimization algorithm with a learning rate of 0.0001. 
 
 ## Results
+
+The results are described in the following paper:
+
+Insert Biorxiv link when available
+
+##References
+1. Nielsen, H., 2017. Predicting Secretory Proteins with SignalP. Protein Function Prediction: Methods and Protocols, pp.59-73.
+2. Bártfai R, Hoeijmakers WAM, Salcedo-Amaya AM, Smits AH, Janssen-Megens E, Kaan A, et al. (2010) H2A.Z Demarcates Intergenic Regions of the Plasmodium falciparum Epigenome That Are Dynamically Marked by H3K9ac and H3K4me3. PLoS Pathog 6(12): e1001223. https://doi.org/10.1371/journal.ppat.1001223
