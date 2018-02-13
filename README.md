@@ -26,10 +26,10 @@ You should see results outputted in the newly created 'results' directory. 'perf
 obtained after each epoch, and 'vote.csv' contains the final voting results made by 6 different models
 trained using 6-fold cross validation.
 
+The [past_results](https://github.com/sjang92/plastNN/tree/master/past_results) directory contains saved models from previous runs. The model with the best performance, and its output, are saved in the [plastNN_final_saved_model](https://github.com/sjang92/plastNN/tree/master/past_results/plastNN_final_saved_model) directory. 
+
 If you want to run the script with different hyperparameters (learning rate, number of layers and neurons, etc),
 check the tensorflow app flags defined in 'src/trainer.py' and re-run accordingly.
-
-## Background
 
 ## Data
 
