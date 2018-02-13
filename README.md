@@ -11,12 +11,14 @@ To setup the python environment and install dependencies, clone the repo and run
 '''
 > source setup.sh
 '''
+
 Once this is done, you should find yourself in the virtual environment named 'venv'.
 
 To train the model with default parameters (recommended) and produce output, run:
 '''
 > ./train.sh
 '''
+
 By default, this script uses 6-fold cross-validation to train 6 fully-connected models.
 Once training is over, these 6 models then vote on the unlabeled protein datapoints to assign labels.
 
