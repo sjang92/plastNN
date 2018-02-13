@@ -1,6 +1,6 @@
 # PlastNN
 
-This is the public repository for PlastNN, a neural-network based predictor for Apicoplast proteins.
+This is the public repository for PlastNN, a neural-network based predictor for Apicoplast proteins in Plasmodium falciparum.
 
 ## How to Run
 PlastNN was developed and tested on Ubuntu 16.04, Bash on Ubuntu on Windows, and MacOSX using Python3.
