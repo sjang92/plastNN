@@ -57,9 +57,11 @@ All models were trained using the RMSProp optimization algorithm with a learning
 
 ## Results
 
-The results are described in the following paper:
+The results are described in the following preprint:
 
-Insert Biorxiv link when available
+The proteome of the malaria plastid organelle, a key anti-parasitic target
+Michael J Boucher, Sreejoyee Ghosh, Lichao Zhang, Avantika Lal, Se Won Jang, An Ju, Shuying Zhang, Xinzi Wang, Stuart A Ralph, James Zou, Joshua E Elias, Ellen Yeh
+bioRxiv 265967; doi: https://doi.org/10.1101/265967
 
 ## References
 1. Nielsen, H., 2017. Predicting Secretory Proteins with SignalP. Protein Function Prediction: Methods and Protocols, pp.59-73.
