@@ -44,12 +44,16 @@ evaluate = function(model){
   cm[, ppv := TP/(TP+FP), by=1:nrow(cm)]
   cm[, recall := TP/(TP+FN), by=1:nrow(cm)]
   cm[, mcc := ((TP*TN) - (FP*FN))/sqrt((TP+FP)*(TP+FN)*(TN+FP)*(TN+FN)), by=1:nrow(cm)]
-  cm_mean = cm[, .(mean(accuracy), mean(ppv), mean(recall), mean(mcc))]
-  cm_sd = cm[, .(sd(accuracy), sd(ppv), sd(recall), sd(mcc))]
+  cm[, npv := TN/(TN+FN), by=1:nrow(cm)]
+  cm[, specificity := TN/(TN+FP), by=1:nrow(cm)]
+  cm_mean = cm[, .(mean(accuracy), mean(ppv), mean(recall), mean(mcc), mean(npv), mean(specificity))]
+  cm_sd = cm[, .(sd(accuracy), sd(ppv), sd(recall), sd(mcc), sd(npv), sd(specificity))]
   cat("Accuracy: ", round(cm_mean$V1,2),  " | PPV: ", round(cm_mean$V2,2), 
-      " | Recall: ", round(cm_mean$V3,2), " | MCC: ", round(cm_mean$V4,2), "\n")
+      " | Recall: ", round(cm_mean$V3,2), " | MCC: ", round(cm_mean$V4,2),
+      " | NPV: ", round(cm_mean$V5,2), " | Specificity: ", round(cm_mean$V6,2), "\n")
   cat("Accuracy (SD): ", round(cm_sd$V1,2),  " | PPV: ", round(cm_sd$V2,2), 
-      " | Recall: ", round(cm_sd$V3,2), " | MCC: ", round(cm_sd$V4,2), "\n")
+      " | Recall: ", round(cm_sd$V3,2), " | MCC: ", round(cm_sd$V4,2), 
+      " | NPV: ", round(cm_sd$V5,2), " | Specificity: ", round(cm_sd$V6,2), "\n")
 }
 ###########################################################
 ##Read datasets
@@ -106,6 +110,14 @@ model=caret::train(x = x , y=train$type, method = "glm", trControl = trainContro
 model
 confusionMatrix.train(model)
 evaluate(model) #Accuracy:  0.9  | PPV:  0.86  | Recall:  0.82  | MCC:  0.77 
+save(model, file="past_results/logistic_regression/model_aa.RData")
+
+#Transcriptome only
+x = train[, .(hr5, hr10, hr15, hr20, hr25, hr30, hr35, hr40)]
+model=caret::train(x = x, y=train$type, method = "glm", trControl = trainControl(method="cv", number=6)) 
+evaluate(model) #Accuracy:  0.91  | PPV:  0.86  | Recall:  0.86  | MCC:  0.8
+save(model, file="past_results/logistic_regression/model_rna.RData")
+
 
 #AA freq + transcriptome; L1 regularization
 x = cbind(train[, .(hr5, hr10, hr15, hr20, hr25, hr30, hr35, hr40)], getFreqsinWindow(train, start, stop))
