@@ -57,11 +57,10 @@ All models were trained using the RMSProp optimization algorithm with a learning
 
 ## Results
 
-The results are described in the following preprint:
+The results are described in the following paper:
 
-The proteome of the malaria plastid organelle, a key anti-parasitic target
-Michael J Boucher, Sreejoyee Ghosh, Lichao Zhang, Avantika Lal, Se Won Jang, An Ju, Shuying Zhang, Xinzi Wang, Stuart A Ralph, James Zou, Joshua E Elias, Ellen Yeh
-bioRxiv 265967; doi: https://doi.org/10.1101/265967
+Boucher, M.J., Ghosh, S., Zhang, L., Lal, A., Jang, S.W., Ju, A., Zhang, S., Wang, X., Ralph, S.A., Zou, J. and Elias, J.E., 2018. Integrative proteomics and bioinformatic prediction enable a high-confidence apicoplast proteome in malaria parasites. PLoS biology, 16(9), p.e2005895.
+https://journals.plos.org/plosbiology/article?id=10.1371/journal.pbio.2005895
 
 ## References
 1. Nielsen, H., 2017. Predicting Secretory Proteins with SignalP. Protein Function Prediction: Methods and Protocols, pp.59-73.
